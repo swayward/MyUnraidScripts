@@ -1,0 +1,86 @@
+#!/usr/bin/python3
+#description=Copy Deluge downloaded audiobooks to a working directory
+#foregroundOnly=false
+#backgroundOnly=true
+#arrayStarted=true
+#name=copy_audiobooks
+# 
+# Version: 2021-04-13
+# Author: jay croft
+# This will copy a directory from source,
+# and place a empty file to indicate it was copied
+# 
+
+# imports required
+import shutil, os
+from os import path
+
+# variables
+source_directory = "/mnt/cache/cache.incoming/audiobooks/"
+target_directory = "/mnt/user/Incoming/Audiobooks"
+owner = "nobody"
+group = "users"
+mode = 0o644
+
+# functions, this is a recursive function
+def copy_directory(srcDir, tarDir):
+    print("Attempting to copy")
+    print("    " + str(srcDir))
+    print("to")
+    print("    " + str(tarDir))
+    try:
+        if shutil.copytree(srcDir, tarDir):
+            print("Sucessfully Copied!")
+            return True
+        else:
+            print("Copy Directory False! This should never print!")
+            return False
+    except shutil.Error as e:
+        print("Failed to copy: %s" % e)
+        exit()
+
+
+def find_copied(srcDir):
+    file = srcDir + "/_COPIED"
+    print("Looking for: " + file)
+    try:
+        if path.isfile(file):
+            print("_COPIED was found. Move on!")
+            return True
+        else:
+            print(file + "Not Found")
+            return False
+    except OSError as e:
+            print("Unable to search for _COPIED: %s" % e)
+            exit()
+
+
+def make_copied(srcDir, mode):
+    try:
+        os.mknod(srcDir + "/_COPIED", mode)
+        print("created _COPIED")
+        return True
+    except OSError as e:
+        print("Unable to create _COPIED!")
+        exit()
+
+
+# copy folders
+try:
+    print('Looking in ' + source_directory)
+    for rootDir, subDir, dirFiles in os.walk(source_directory):
+        for subDirName in subDir:
+            print("=======================================")
+            print('Directory Found: ' + str(rootDir) + str(subDirName))
+            # This folder was already copied and will be skipped
+            if find_copied(os.path.join(rootDir, subDirName)):
+                pass
+            # if find_copied returned False
+            elif copy_directory(os.path.join(rootDir, subDirName), os.path.join(target_directory, subDirName)):          
+                # make _COPIED file
+                make_copied(os.path.join(rootDir, subDirName), mode)
+except:
+    print('Unable to list subfolders of ' + source_directory)
+    traceback.print_exc()
+
+# END
